@@ -166,7 +166,7 @@ export async function queryRoadsInRadius(
 ): Promise<OverpassWay[]> {
   const query = `
     [out:json][timeout:60];
-    way["highway"~"^(tertiary|secondary|unclassified|primary|tertiary_link|secondary_link|primary_link)$"](around:${radiusMeters},${center.lat},${center.lng});
+    way["highway"~"^(tertiary|secondary|unclassified|primary)$"]["bridge"!~"yes"]["tunnel"!~"yes"](around:${radiusMeters},${center.lat},${center.lng});
     out tags geom;
   `;
 

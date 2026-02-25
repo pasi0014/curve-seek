@@ -216,17 +216,32 @@ function aggregateTags(ways: OverpassWay[]): WayGroup["tags"] {
 
 /**
  * Score a way group using the existing enthusiast pipeline.
- * Returns null if the group is too short or has too few coords.
+ * Returns null if the group fails hard gates:
+ * - Must be >= 2km long
+ * - Must have >= 10 coordinate points
+ * - Must have curvature >= 30 deg/km (rejects straight roads)
+ * - Must have curvatureScore >= 35 (meaningful curves)
  */
 export function scoreWayGroup(group: WayGroup): DiscoveredRoad | null {
-  if (group.lengthMeters < 200 || group.coords.length < 3) return null;
+  // Hard gate: minimum 2km length — short segments aren't "roads"
+  if (group.lengthMeters < 2000) return null;
+
+  // Hard gate: need enough geometry points for curvature analysis
+  if (group.coords.length < 10) return null;
 
   // Curvature
   const curvResult = analyzeCurvature(group.coords, group.lengthMeters);
+
+  // Hard gate: reject straight roads — need at least 30 deg/km of turning
+  if (curvResult.curvaturePerKm < 30) return null;
+
   const curvatureScore = scoreCurvature(
     curvResult.curvaturePerKm,
     curvResult.flowScore
   );
+
+  // Hard gate: curvature score must indicate at least gentle curves
+  if (curvatureScore < 35) return null;
 
   // Elevation: default 50 for MVP (Overpass doesn't return elevation)
   const elevationScore = 50;

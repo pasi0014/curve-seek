@@ -120,8 +120,8 @@ export function DiscoverPanel({
         <div className="discover-results">
           <div className="discover-summary">
             {result.roads.length === 0
-              ? `Scanned ${result.totalWaysScanned} ways — no fun roads found. Try a larger radius.`
-              : `Found ${result.roads.length} fun road${result.roads.length !== 1 ? "s" : ""} from ${result.totalWaysScanned} ways scanned`}
+              ? `Scanned ${result.totalWaysScanned} ways — no curvy roads found in this area. Try a larger radius or a more rural/hilly location.`
+              : `Found ${result.roads.length} curvy road${result.roads.length !== 1 ? "s" : ""} from ${result.totalWaysScanned} ways scanned`}
           </div>
 
           <div className="discover-road-list">

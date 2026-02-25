@@ -43,7 +43,7 @@ export async function discoverFunRoads(
   // 3. Score each group
   const scored = groups
     .map(scoreWayGroup)
-    .filter((r): r is NonNullable<typeof r> => r !== null && r.enthusiastScore >= 40);
+    .filter((r): r is NonNullable<typeof r> => r !== null && r.enthusiastScore >= 50);
 
   // 4. Sort by score descending, take top 20
   scored.sort((a, b) => b.enthusiastScore - a.enthusiastScore);
