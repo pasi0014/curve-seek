@@ -11,6 +11,9 @@ import {
   enthusiastRating,
   enthusiastColor,
 } from "../utils/helpers";
+import { qualityBadgeColors, enthusiastBadgeColors } from "../utils/tw";
+
+const badgeBase = "inline-block px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wide";
 
 export function ReportView({
   report,
@@ -28,28 +31,25 @@ export function ReportView({
   }
 
   return (
-    <div className="report">
+    <div className="p-6 flex flex-col gap-6">
       {/* Score hero */}
-      <div className="score-hero">
+      <div className="flex items-center gap-5">
         <ScoreRing score={report.overallScore} />
-        <div className="score-meta">
-          <h2>
+        <div>
+          <h2 className="text-[15px] font-semibold mb-1">
             {report.origin} to {report.destination}
           </h2>
-          <span
-            className="quality-badge"
-            data-quality={report.overallQuality}
-          >
+          <span className={`${badgeBase} ${qualityBadgeColors[report.overallQuality] ?? ""}`}>
             {report.overallQuality} condition
           </span>
-          <div className="score-stats">
-            <span className="score-stat">
-              <strong>{formatDistance(report.totalDistanceKm)}</strong>
+          <div className="flex gap-4 mt-2">
+            <span className="text-xs text-slate-500">
+              <strong className="text-slate-400 font-semibold">{formatDistance(report.totalDistanceKm)}</strong>
             </span>
-            <span className="score-stat">
-              <strong>{formatDuration(route.durationSeconds)}</strong>
+            <span className="text-xs text-slate-500">
+              <strong className="text-slate-400 font-semibold">{formatDuration(route.durationSeconds)}</strong>
             </span>
-            <span className="score-stat">
+            <span className="text-xs text-slate-500">
               {report.segments.length} segments
             </span>
           </div>
@@ -58,28 +58,30 @@ export function ReportView({
 
       {/* Problem sections */}
       {report.problemSections.length > 0 && (
-        <div className="report-section">
-          <h3>Problem Sections</h3>
-          <div className="problem-list">
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">
+            Problem Sections
+          </h3>
+          <div className="flex flex-col gap-2">
             {report.problemSections.map((seg) => {
               const quality = scoreToQuality(seg.compositeScore);
+              const borderColor = quality === "fair" ? "border-l-amber-500" : quality === "poor" ? "border-l-orange-500" : "border-l-red-500";
               return (
                 <div
-                  className="problem-card"
-                  data-quality={quality}
+                  className={`px-4 py-3 bg-slate-900 rounded-md border-l-[3px] ${borderColor} flex justify-between items-center gap-3`}
                   key={seg.segment.index}
                 >
-                  <div className="problem-info">
-                    <div className="problem-title">
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-medium text-slate-100 mb-0.5">
                       Segment {seg.segment.index + 1}
                     </div>
-                    <div className="problem-detail">
+                    <div className="text-[11px] text-slate-500">
                       {describeProblem(seg)} &middot;{" "}
                       {formatDistance(seg.segment.lengthMeters / 1000)}
                     </div>
                   </div>
                   <span
-                    className="problem-score"
+                    className="text-sm font-bold tabular-nums shrink-0"
                     style={{ color: scoreColor(seg.compositeScore) }}
                   >
                     {Math.round(seg.compositeScore)}
@@ -92,16 +94,18 @@ export function ReportView({
       )}
 
       {/* Segment breakdown */}
-      <div className="report-section">
-        <h3>Segment Breakdown</h3>
-        <table className="segment-table">
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">
+          Segment Breakdown
+        </h3>
+        <table className="w-full border-collapse text-xs">
           <thead>
             <tr>
-              <th>#</th>
-              <th>Score</th>
-              <th>Surface</th>
-              <th>Winter</th>
-              <th>Weather</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-500 border-b border-slate-700 text-[11px] uppercase tracking-wide">#</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-500 border-b border-slate-700 text-[11px] uppercase tracking-wide">Score</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-500 border-b border-slate-700 text-[11px] uppercase tracking-wide">Surface</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-500 border-b border-slate-700 text-[11px] uppercase tracking-wide">Winter</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-500 border-b border-slate-700 text-[11px] uppercase tracking-wide">Weather</th>
             </tr>
           </thead>
           <tbody>
@@ -111,55 +115,47 @@ export function ReportView({
               return (
                 <React.Fragment key={seg.segment.index}>
                   <tr
-                    onClick={() =>
-                      setExpandedSeg(isExpanded ? null : seg.segment.index)
-                    }
-                    style={{ cursor: "pointer" }}
+                    onClick={() => setExpandedSeg(isExpanded ? null : seg.segment.index)}
+                    className="cursor-pointer hover:bg-slate-700/30"
                   >
-                    <td>{seg.segment.index + 1}</td>
-                    <td className="score-cell">
+                    <td className="px-3 py-2 text-slate-400 border-b border-slate-700/50 align-middle">{seg.segment.index + 1}</td>
+                    <td className="px-3 py-2 text-slate-400 border-b border-slate-700/50 align-middle font-bold tabular-nums">
                       <span
-                        className="score-dot"
+                        className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle"
                         style={{ background: qualityColor(quality) }}
                       />
                       {Math.round(seg.compositeScore)}
                     </td>
-                    <td>{seg.osmData?.surface ?? "--"}</td>
-                    <td>
-                      {seg.winterCondition
-                        ? seg.winterCondition.status.replace("_", " ")
-                        : "--"}
+                    <td className="px-3 py-2 text-slate-400 border-b border-slate-700/50 align-middle">{seg.osmData?.surface ?? "--"}</td>
+                    <td className="px-3 py-2 text-slate-400 border-b border-slate-700/50 align-middle">
+                      {seg.winterCondition ? seg.winterCondition.status.replace("_", " ") : "--"}
                     </td>
-                    <td>
-                      {seg.weatherData
-                        ? `${seg.weatherData.temperature}C`
-                        : "--"}
+                    <td className="px-3 py-2 text-slate-400 border-b border-slate-700/50 align-middle">
+                      {seg.weatherData ? `${seg.weatherData.temperature}C` : "--"}
                     </td>
                   </tr>
                   {isExpanded && (
-                    <tr className="segment-detail">
-                      <td colSpan={5}>
-                        <dl className="detail-grid">
-                          <dt>Length</dt>
-                          <dd>
-                            {formatDistance(seg.segment.lengthMeters / 1000)}
-                          </dd>
-                          <dt>Smoothness</dt>
-                          <dd>{seg.osmData?.smoothness ?? "unknown"}</dd>
-                          <dt>OSM score</dt>
-                          <dd>{Math.round(seg.osmScore)}</dd>
-                          <dt>Winter score</dt>
-                          <dd>{Math.round(seg.winterScore)}</dd>
-                          <dt>Weather score</dt>
-                          <dd>{Math.round(seg.weatherScore)}</dd>
-                          <dt>Crowd score</dt>
-                          <dd>{Math.round(seg.crowdScore)}</dd>
+                    <tr className="text-[11px] text-slate-500 leading-relaxed">
+                      <td colSpan={5} className="px-3 py-2 pb-3 border-b border-slate-700">
+                        <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
+                          <dt className="text-slate-500">Length</dt>
+                          <dd className="text-slate-400 font-medium">{formatDistance(seg.segment.lengthMeters / 1000)}</dd>
+                          <dt className="text-slate-500">Smoothness</dt>
+                          <dd className="text-slate-400 font-medium">{seg.osmData?.smoothness ?? "unknown"}</dd>
+                          <dt className="text-slate-500">OSM score</dt>
+                          <dd className="text-slate-400 font-medium">{Math.round(seg.osmScore)}</dd>
+                          <dt className="text-slate-500">Winter score</dt>
+                          <dd className="text-slate-400 font-medium">{Math.round(seg.winterScore)}</dd>
+                          <dt className="text-slate-500">Weather score</dt>
+                          <dd className="text-slate-400 font-medium">{Math.round(seg.weatherScore)}</dd>
+                          <dt className="text-slate-500">Crowd score</dt>
+                          <dd className="text-slate-400 font-medium">{Math.round(seg.crowdScore)}</dd>
                           {seg.weatherData && (
                             <>
-                              <dt>Wind</dt>
-                              <dd>{seg.weatherData.windSpeed} km/h</dd>
-                              <dt>Ice risk</dt>
-                              <dd>{seg.weatherData.iceRisk ? "Yes" : "No"}</dd>
+                              <dt className="text-slate-500">Wind</dt>
+                              <dd className="text-slate-400 font-medium">{seg.weatherData.windSpeed} km/h</dd>
+                              <dt className="text-slate-500">Ice risk</dt>
+                              <dd className="text-slate-400 font-medium">{seg.weatherData.iceRisk ? "Yes" : "No"}</dd>
                             </>
                           )}
                         </dl>
@@ -191,28 +187,25 @@ function EnthusiastReport({
   const color = enthusiastColor(report.overallEnthusiastScore);
 
   return (
-    <div className="report">
+    <div className="p-6 flex flex-col gap-6">
       {/* Enthusiast score hero */}
-      <div className="score-hero">
+      <div className="flex items-center gap-5">
         <ScoreRing score={report.overallEnthusiastScore} color={color} />
-        <div className="score-meta">
-          <h2>
+        <div>
+          <h2 className="text-[15px] font-semibold mb-1">
             {report.origin} to {report.destination}
           </h2>
-          <span
-            className="quality-badge enthusiast-badge"
-            data-enthusiast={rating}
-          >
+          <span className={`${badgeBase} ${enthusiastBadgeColors[rating] ?? ""}`}>
             {rating}
           </span>
-          <div className="score-stats">
-            <span className="score-stat">
-              <strong>{formatDistance(report.totalDistanceKm)}</strong>
+          <div className="flex gap-4 mt-2">
+            <span className="text-xs text-slate-500">
+              <strong className="text-slate-400 font-semibold">{formatDistance(report.totalDistanceKm)}</strong>
             </span>
-            <span className="score-stat">
-              <strong>{formatDuration(route.durationSeconds)}</strong>
+            <span className="text-xs text-slate-500">
+              <strong className="text-slate-400 font-semibold">{formatDuration(route.durationSeconds)}</strong>
             </span>
-            <span className="score-stat">
+            <span className="text-xs text-slate-500">
               {report.segments.length} segments
             </span>
           </div>
@@ -221,28 +214,30 @@ function EnthusiastReport({
 
       {/* Enthusiast highlights */}
       {report.enthusiastHighlights.length > 0 && (
-        <div className="report-section">
-          <h3>Enthusiast Highlights</h3>
-          <div className="problem-list">
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">
+            Enthusiast Highlights
+          </h3>
+          <div className="flex flex-col gap-2">
             {report.enthusiastHighlights.map((seg) => {
               const ed = seg.enthusiastData;
               return (
                 <div
-                  className="enthusiast-highlight"
+                  className="px-4 py-3 bg-slate-900 rounded-md border-l-[3px] border-l-violet-500 flex justify-between items-center gap-3"
                   key={seg.segment.index}
                 >
-                  <div className="problem-info">
-                    <div className="problem-title">
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-medium text-slate-100 mb-0.5">
                       {ed?.roadName ?? `Segment ${seg.segment.index + 1}`}
                     </div>
-                    <div className="problem-detail">
+                    <div className="text-[11px] text-slate-500">
                       {ed ? `${ed.curvaturePerKm} deg/km` : ""}
                       {ed?.elevationPerKm ? ` · ${ed.elevationPerKm} m/km elevation` : ""}
                       {ed?.highwayType ? ` · ${ed.highwayType}` : ""}
                     </div>
                   </div>
                   <span
-                    className="problem-score"
+                    className="text-sm font-bold tabular-nums shrink-0"
                     style={{ color: enthusiastColor(seg.enthusiastScore) }}
                   >
                     {Math.round(seg.enthusiastScore)}
@@ -255,16 +250,18 @@ function EnthusiastReport({
       )}
 
       {/* Segment breakdown — enthusiast mode */}
-      <div className="report-section">
-        <h3>Segment Breakdown</h3>
-        <table className="segment-table">
+      <div>
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">
+          Segment Breakdown
+        </h3>
+        <table className="w-full border-collapse text-xs">
           <thead>
             <tr>
-              <th>#</th>
-              <th>Fun</th>
-              <th>Curves</th>
-              <th>Elev</th>
-              <th>Road</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-500 border-b border-slate-700 text-[11px] uppercase tracking-wide">#</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-500 border-b border-slate-700 text-[11px] uppercase tracking-wide">Fun</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-500 border-b border-slate-700 text-[11px] uppercase tracking-wide">Curves</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-500 border-b border-slate-700 text-[11px] uppercase tracking-wide">Elev</th>
+              <th className="text-left px-3 py-2 font-semibold text-slate-500 border-b border-slate-700 text-[11px] uppercase tracking-wide">Road</th>
             </tr>
           </thead>
           <tbody>
@@ -274,49 +271,47 @@ function EnthusiastReport({
               return (
                 <React.Fragment key={seg.segment.index}>
                   <tr
-                    onClick={() =>
-                      setExpandedSeg(isExpanded ? null : seg.segment.index)
-                    }
-                    style={{ cursor: "pointer" }}
+                    onClick={() => setExpandedSeg(isExpanded ? null : seg.segment.index)}
+                    className="cursor-pointer hover:bg-slate-700/30"
                   >
-                    <td>{seg.segment.index + 1}</td>
-                    <td className="score-cell">
+                    <td className="px-3 py-2 text-slate-400 border-b border-slate-700/50 align-middle">{seg.segment.index + 1}</td>
+                    <td className="px-3 py-2 text-slate-400 border-b border-slate-700/50 align-middle font-bold tabular-nums">
                       <span
-                        className="score-dot"
+                        className="inline-block w-1.5 h-1.5 rounded-full mr-1 align-middle"
                         style={{ background: enthusiastColor(seg.enthusiastScore) }}
                       />
                       {Math.round(seg.enthusiastScore)}
                     </td>
-                    <td>{ed ? `${ed.curvaturePerKm}` : "--"}</td>
-                    <td>{ed ? `${ed.elevationPerKm}` : "--"}</td>
-                    <td>{ed?.highwayType ?? "--"}</td>
+                    <td className="px-3 py-2 text-slate-400 border-b border-slate-700/50 align-middle">{ed ? `${ed.curvaturePerKm}` : "--"}</td>
+                    <td className="px-3 py-2 text-slate-400 border-b border-slate-700/50 align-middle">{ed ? `${ed.elevationPerKm}` : "--"}</td>
+                    <td className="px-3 py-2 text-slate-400 border-b border-slate-700/50 align-middle">{ed?.highwayType ?? "--"}</td>
                   </tr>
                   {isExpanded && ed && (
-                    <tr className="segment-detail">
-                      <td colSpan={5}>
-                        <dl className="detail-grid">
-                          <dt>Road name</dt>
-                          <dd>{ed.roadName ?? "unknown"}</dd>
-                          <dt>Length</dt>
-                          <dd>{formatDistance(seg.segment.lengthMeters / 1000)}</dd>
-                          <dt>Curvature score</dt>
-                          <dd>{ed.curvatureScore}</dd>
-                          <dt>Elevation score</dt>
-                          <dd>{ed.elevationScore}</dd>
-                          <dt>Surface score</dt>
-                          <dd>{ed.surfaceScore}</dd>
-                          <dt>Character score</dt>
-                          <dd>{ed.characterScore}</dd>
-                          <dt>Corners</dt>
-                          <dd>{ed.cornerCount}</dd>
-                          <dt>Flow</dt>
-                          <dd>{ed.flowScore}</dd>
-                          <dt>Max gradient</dt>
-                          <dd>{ed.maxGradientPct}%</dd>
-                          <dt>Speed limit</dt>
-                          <dd>{ed.maxspeed ?? "unknown"}</dd>
-                          <dt>Lanes</dt>
-                          <dd>{ed.lanes ?? "unknown"}</dd>
+                    <tr className="text-[11px] text-slate-500 leading-relaxed">
+                      <td colSpan={5} className="px-3 py-2 pb-3 border-b border-slate-700">
+                        <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
+                          <dt className="text-slate-500">Road name</dt>
+                          <dd className="text-slate-400 font-medium">{ed.roadName ?? "unknown"}</dd>
+                          <dt className="text-slate-500">Length</dt>
+                          <dd className="text-slate-400 font-medium">{formatDistance(seg.segment.lengthMeters / 1000)}</dd>
+                          <dt className="text-slate-500">Curvature score</dt>
+                          <dd className="text-slate-400 font-medium">{ed.curvatureScore}</dd>
+                          <dt className="text-slate-500">Elevation score</dt>
+                          <dd className="text-slate-400 font-medium">{ed.elevationScore}</dd>
+                          <dt className="text-slate-500">Surface score</dt>
+                          <dd className="text-slate-400 font-medium">{ed.surfaceScore}</dd>
+                          <dt className="text-slate-500">Character score</dt>
+                          <dd className="text-slate-400 font-medium">{ed.characterScore}</dd>
+                          <dt className="text-slate-500">Corners</dt>
+                          <dd className="text-slate-400 font-medium">{ed.cornerCount}</dd>
+                          <dt className="text-slate-500">Flow</dt>
+                          <dd className="text-slate-400 font-medium">{ed.flowScore}</dd>
+                          <dt className="text-slate-500">Max gradient</dt>
+                          <dd className="text-slate-400 font-medium">{ed.maxGradientPct}%</dd>
+                          <dt className="text-slate-500">Speed limit</dt>
+                          <dd className="text-slate-400 font-medium">{ed.maxspeed ?? "unknown"}</dd>
+                          <dt className="text-slate-500">Lanes</dt>
+                          <dd className="text-slate-400 font-medium">{ed.lanes ?? "unknown"}</dd>
                         </dl>
                       </td>
                     </tr>

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import type { SavedRouteDetail as SavedRouteDetailType, SavedStop, StopType } from "../types";
+import { inputClasses, labelClasses, btnPrimary, btnSecondary, btnDanger } from "../utils/tw";
 
 const STOP_TYPE_LABELS: Record<StopType, string> = {
   waypoint: "Waypoint",
@@ -66,47 +67,51 @@ export function SavedRouteDetail({ route, onAnalyze, onAddStop, onRemoveStop, on
   }
 
   return (
-    <div className="saved-route-detail">
-      <div className="saved-route-detail-header">
-        <button className="btn-back" onClick={onBack}>
+    <div className="flex flex-col gap-4 px-6 py-4">
+      <div className="flex flex-col gap-1">
+        <button
+          className="inline-flex items-center gap-1 bg-transparent border-none text-blue-500 font-sans text-xs font-semibold cursor-pointer p-0 mb-2 hover:text-blue-600"
+          onClick={onBack}
+        >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 19l-7-7 7-7" />
           </svg>
           Routes
         </button>
-        <h2>{route.name}</h2>
-        <div className="saved-route-detail-path">
+        <h2 className="text-base font-bold">{route.name}</h2>
+        <div className="text-[13px] text-slate-400">
           {route.originName.split(",")[0]} &rarr; {route.destName.split(",")[0]}
         </div>
-        <div className="saved-route-detail-stats">
+        <div className="flex gap-3 text-xs text-slate-500">
           <span>{(route.distanceM / 1000).toFixed(1)} km</span>
           <span>{Math.round(route.durationS / 60)} min</span>
         </div>
         {route.description && (
-          <p className="saved-route-detail-desc">{route.description}</p>
+          <p className="text-[13px] text-slate-500 mt-2">{route.description}</p>
         )}
       </div>
 
-      <div className="saved-route-detail-actions">
-        <button className="btn btn-primary" onClick={onAnalyze}>
+      <div className="flex gap-2">
+        <button className={`${btnPrimary} flex-1 text-xs px-3 py-2`} onClick={onAnalyze}>
           Analyze Route
         </button>
         <button
-          className="btn btn-secondary"
+          className={`${btnSecondary} flex-1 text-xs px-3 py-2`}
           onClick={() => setShowAddStop(!showAddStop)}
         >
           {showAddStop ? "Cancel" : "Add Stop"}
         </button>
-        <button className="btn btn-danger" onClick={onDelete}>
+        <button className={`${btnDanger} flex-1 text-xs px-3 py-2`} onClick={onDelete}>
           Delete
         </button>
       </div>
 
       {showAddStop && (
-        <form className="add-stop-form" onSubmit={handleAddStop}>
-          <div className="modal-field">
-            <label>Stop Type</label>
+        <form className="p-4 bg-slate-900 border border-slate-700 rounded-lg" onSubmit={handleAddStop}>
+          <div className="mb-3">
+            <label className={labelClasses}>Stop Type</label>
             <select
+              className={inputClasses}
               value={form.stopType}
               onChange={(e) => setForm({ ...form, stopType: e.target.value as StopType })}
             >
@@ -115,73 +120,77 @@ export function SavedRouteDetail({ route, onAnalyze, onAddStop, onRemoveStop, on
               ))}
             </select>
           </div>
-          <div className="modal-field">
-            <label>Name</label>
+          <div className="mb-3">
+            <label className={labelClasses}>Name</label>
             <input
               type="text"
+              className={inputClasses}
               placeholder="e.g. Tim Hortons on Hwy 7"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
           </div>
-          <div className="add-stop-coords">
-            <div className="modal-field">
-              <label>Latitude</label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="mb-3">
+              <label className={labelClasses}>Latitude</label>
               <input
                 type="text"
+                className={inputClasses}
                 placeholder="43.65"
                 value={form.lat}
                 onChange={(e) => setForm({ ...form, lat: e.target.value })}
               />
             </div>
-            <div className="modal-field">
-              <label>Longitude</label>
+            <div className="mb-3">
+              <label className={labelClasses}>Longitude</label>
               <input
                 type="text"
+                className={inputClasses}
                 placeholder="-79.38"
                 value={form.lng}
                 onChange={(e) => setForm({ ...form, lng: e.target.value })}
               />
             </div>
           </div>
-          <div className="modal-field">
-            <label>Note (optional)</label>
+          <div className="mb-3">
+            <label className={labelClasses}>Note (optional)</label>
             <input
               type="text"
+              className={inputClasses}
               placeholder="Best coffee in town"
               value={form.note}
               onChange={(e) => setForm({ ...form, note: e.target.value })}
             />
           </div>
-          <button className="btn btn-primary" type="submit" disabled={!form.name.trim() || !form.lat || !form.lng}>
+          <button className={btnPrimary} type="submit" disabled={!form.name.trim() || !form.lat || !form.lng}>
             Add Stop
           </button>
         </form>
       )}
 
       {route.stops.length > 0 && (
-        <div className="stops-section">
-          <h3 className="stops-section-title">
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">
             Stops ({route.stops.length})
           </h3>
-          <div className="stops-list">
+          <div className="flex flex-col gap-2">
             {route.stops.map((stop) => (
-              <div key={stop.id} className="stop-card">
+              <div key={stop.id} className="flex items-center gap-3 px-4 py-3 bg-slate-900 rounded-md">
                 <div
-                  className="stop-card-indicator"
+                  className="w-2 h-2 rounded-full shrink-0"
                   style={{ background: STOP_TYPE_COLORS[stop.stopType] }}
                 />
-                <div className="stop-card-info">
-                  <div className="stop-card-name">{stop.name}</div>
-                  <div className="stop-card-type">
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-medium">{stop.name}</div>
+                  <div className="text-[11px] text-slate-500">
                     {STOP_TYPE_LABELS[stop.stopType]}
                   </div>
                   {stop.note && (
-                    <div className="stop-card-note">{stop.note}</div>
+                    <div className="text-[11px] text-slate-500 italic">{stop.note}</div>
                   )}
                 </div>
                 <button
-                  className="stop-card-remove"
+                  className="bg-transparent border-none text-slate-500 cursor-pointer p-1 rounded-md transition-colors duration-150 shrink-0 hover:text-red-500 hover:bg-red-500/10"
                   onClick={() => onRemoveStop(stop.id)}
                   title="Remove stop"
                 >

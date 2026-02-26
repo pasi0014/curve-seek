@@ -240,9 +240,13 @@ export function MapView({
   }, [discoveredRoads, selectedDiscoveredRoad]);
 
   return (
-    <div className="map-container">
+    <div className="relative min-h-0">
       {isDriving && (
-        <div className="map-drive-indicator" aria-live="polite">
+        <div
+          className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] flex items-center gap-2 px-4 py-2 bg-red-500 text-white text-[13px] font-semibold tracking-wide rounded-lg animate-[pulse-bg_2s_ease-in-out_infinite]"
+          aria-live="polite"
+        >
+          <span className="w-2 h-2 rounded-full bg-white animate-[blink_1s_steps(2)_infinite]" />
           Recording drive
         </div>
       )}

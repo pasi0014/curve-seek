@@ -1,4 +1,0 @@
-[     289ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:3000/favicon.ico:0
-[  123437ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_bun/hmr' failed:  @ http://localhost:3000/_bun/client/index-00000000b9225a8a.js:20
-[  123438ms] [WARNING] [Bun] Hot-module-reloading socket disconnected, reconnecting... @ http://localhost:3000/_bun/client/index-00000000b9225a8a.js:20
-[  124450ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_bun/hmr' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_bun/client/index-00000000b9225a8a.js:20

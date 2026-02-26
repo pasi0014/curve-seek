@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import type { RouteGeometry, RouteReport } from "../types";
+import { inputClasses, labelClasses, btnPrimary, btnSecondary } from "../utils/tw";
 
 interface Props {
   route: RouteGeometry;
@@ -50,18 +51,25 @@ export function SaveRouteModal({ route, report, onSave, onClose }: Props) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal-title">Save Route</h2>
-        <p className="modal-subtitle">
+    <div
+      className="fixed inset-0 z-[2000] bg-black/60 flex items-center justify-center p-6"
+      onClick={onClose}
+    >
+      <div
+        className="bg-slate-800 border border-slate-700 rounded-xl p-6 w-full max-w-[400px] shadow-[0_16px_48px_rgba(0,0,0,0.5)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-base font-bold mb-1">Save Route</h2>
+        <p className="text-xs text-slate-500 mb-5">
           {report.origin} to {report.destination} &middot;{" "}
           {report.totalDistanceKm.toFixed(1)} km
         </p>
 
-        <div className="modal-field">
-          <label>Route Name</label>
+        <div className="mb-3">
+          <label className={labelClasses}>Route Name</label>
           <input
             type="text"
+            className={inputClasses}
             placeholder="e.g. Weekend Twisties"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -69,9 +77,10 @@ export function SaveRouteModal({ route, report, onSave, onClose }: Props) {
           />
         </div>
 
-        <div className="modal-field">
-          <label>Description (optional)</label>
+        <div className="mb-3">
+          <label className={labelClasses}>Description (optional)</label>
           <textarea
+            className={`${inputClasses} resize-y`}
             placeholder="Notes about this route..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -79,14 +88,18 @@ export function SaveRouteModal({ route, report, onSave, onClose }: Props) {
           />
         </div>
 
-        {error && <div className="modal-error">{error}</div>}
+        {error && (
+          <div className="mb-3 px-3 py-2 bg-red-500/15 rounded-md text-red-500 text-[13px]">
+            {error}
+          </div>
+        )}
 
-        <div className="modal-actions">
-          <button className="btn btn-secondary" onClick={onClose}>
+        <div className="flex gap-3 mt-5">
+          <button className={`${btnSecondary} flex-1`} onClick={onClose}>
             Cancel
           </button>
           <button
-            className="btn btn-primary"
+            className={`${btnPrimary} flex-1`}
             disabled={!name.trim() || saving}
             onClick={handleSave}
           >

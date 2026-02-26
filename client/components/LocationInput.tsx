@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { GeocodedPlace } from "../types";
 import { debounce } from "../utils/helpers";
+import { inputClasses, labelClasses } from "../utils/tw";
 
 interface LocationInputProps {
   label: string;
@@ -88,10 +89,11 @@ export function LocationInput({
   }, []);
 
   return (
-    <div className="input-group" ref={containerRef}>
-      <label>{label}</label>
+    <div className="relative" ref={containerRef}>
+      <label className={labelClasses}>{label}</label>
       <input
         type="text"
+        className={inputClasses}
         placeholder={placeholder}
         value={value}
         onChange={handleChange}
@@ -100,13 +102,17 @@ export function LocationInput({
         autoComplete="off"
       />
       {showList && suggestions.length > 0 && (
-        <ul className="autocomplete-list" role="listbox">
+        <ul className="absolute top-full left-0 right-0 z-50 bg-slate-900 border border-slate-700 border-t-0 rounded-b-md max-h-[200px] overflow-y-auto list-none" role="listbox">
           {suggestions.map((place, i) => (
             <li
               key={`${place.name}-${i}`}
               role="option"
               aria-selected={i === activeIndex}
-              data-active={i === activeIndex ? "true" : undefined}
+              className={`px-4 py-3 text-[13px] cursor-pointer transition-colors duration-150 border-b border-slate-700 last:border-b-0 ${
+                i === activeIndex
+                  ? "bg-slate-700 text-slate-100"
+                  : "text-slate-400 hover:bg-slate-700 hover:text-slate-100"
+              }`}
               onMouseDown={() => handleSelect(place)}
             >
               {place.name}

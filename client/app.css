@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+  --breakpoint-panel: 860px;
+}
+
+/* --- Base --- */
+html, body, #root {
+  height: 100%;
+}
+
+/* --- Scrollbar --- */
+.scrollbar-thin::-webkit-scrollbar { width: 6px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+/* --- Leaflet dark theme overrides --- */
+.leaflet-container .leaflet-tile-pane {
+  filter: brightness(0.85) contrast(1.1) saturate(0.6);
+}
+
+.leaflet-container .leaflet-control-zoom a {
+  background: #1e293b;
+  color: #f1f5f9;
+  border-color: #334155;
+}
+
+.leaflet-container .leaflet-control-zoom a:hover {
+  background: #334155;
+}
+
+.leaflet-container .leaflet-control-attribution {
+  background: rgba(15, 23, 42, 0.92);
+  color: #64748b;
+  font-size: 10px;
+}
+
+.leaflet-container .leaflet-control-attribution a {
+  color: #94a3b8;
+}
+
+/* --- Leaflet tooltip (applied via bindTooltip API) --- */
+.route-tooltip {
+  background: #1e293b !important;
+  border: 1px solid #334155 !important;
+  color: #f1f5f9 !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  padding: 2px 8px !important;
+  border-radius: 6px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+.route-tooltip::before {
+  border-top-color: #334155 !important;
+}
+
+/* --- SVG score ring strokes --- */
+.score-ring-bg {
+  fill: none;
+  stroke: #0f172a;
+  stroke-width: 6;
+}
+
+.score-ring-fill {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.8s ease;
+}
+
+/* --- Keyframe animations --- */
+@keyframes pulse-bg {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes loading-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+/* --- Horizontal scrollbar for route picker --- */
+.route-picker-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 transparent;
+}
+.route-picker-scroll::-webkit-scrollbar { height: 4px; }
+.route-picker-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }

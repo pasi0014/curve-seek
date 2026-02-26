@@ -1,4 +1,5 @@
 import React from "react";
+import clsx from "clsx";
 import type { RouteCandidate } from "../types";
 
 function formatDuration(seconds: number): string {
@@ -39,7 +40,7 @@ export function RoutePicker({
     : fastest.report.overallScore;
 
   return (
-    <div className="route-picker">
+    <div className="flex gap-2 px-6 py-3 overflow-x-auto border-b border-slate-700 route-picker-scroll">
       {candidates.map((c) => {
         const isSelected = c.id === selectedId;
         const isRecommended = c.id === recommended;
@@ -55,27 +56,45 @@ export function RoutePicker({
         return (
           <button
             key={c.id}
-            className={`route-card${isSelected ? " selected" : ""}`}
+            className={clsx(
+              "flex-none min-w-[140px] p-3 bg-slate-900 border rounded-lg cursor-pointer transition-[border-color,background] duration-150 text-left font-sans text-slate-100",
+              isSelected
+                ? "border-blue-500 bg-[color-mix(in_srgb,#3b82f6_8%,#0f172a)]"
+                : "border-slate-700 hover:bg-slate-700"
+            )}
             onClick={() => onSelect(c.id)}
           >
-            <div className="route-card-header">
-              <span className="route-card-label">{c.label}</span>
-              {isFastest && <span className="route-badge fastest">Fastest</span>}
+            <div className="flex items-center gap-1 mb-2 flex-wrap">
+              <span className="text-xs font-semibold text-slate-400">{c.label}</span>
+              {isFastest && (
+                <span className="inline-block px-1 py-px rounded-[3px] text-[9px] font-bold uppercase tracking-wide bg-blue-500/20 text-blue-500">
+                  Fastest
+                </span>
+              )}
               {isRecommended && viewMode === "enthusiast" && (
-                <span className="route-badge recommended">Recommended</span>
+                <span className="inline-block px-1 py-px rounded-[3px] text-[9px] font-bold uppercase tracking-wide bg-violet-500/20 text-violet-500">
+                  Recommended
+                </span>
               )}
             </div>
-            <div className="route-card-score">{score}</div>
-            <div className="route-card-stats">
+            <div className="text-[22px] font-bold tabular-nums mb-1">{score}</div>
+            <div className="flex gap-3 text-[11px] text-slate-500 mb-1">
               <span>{formatDistance(c.route.distanceMeters)}</span>
               <span>{formatDuration(c.route.durationSeconds)}</span>
             </div>
             {!isFastest && (
-              <div className="route-card-deltas">
-                <span className="route-delta">{formatDelta(distDelta, "km")}</span>
-                <span className="route-delta">{formatDelta(durDelta, "min")}</span>
+              <div className="flex gap-2 flex-wrap">
+                <span className="text-[10px] font-semibold text-slate-500 tabular-nums">
+                  {formatDelta(distDelta, "km")}
+                </span>
+                <span className="text-[10px] font-semibold text-slate-500 tabular-nums">
+                  {formatDelta(durDelta, "min")}
+                </span>
                 {scoreDelta !== 0 && (
-                  <span className={`route-delta${scoreDelta > 0 ? " positive" : ""}`}>
+                  <span className={clsx(
+                    "text-[10px] font-semibold tabular-nums",
+                    scoreDelta > 0 ? "text-green-500" : "text-slate-500"
+                  )}>
                     {formatDelta(scoreDelta, "pts")}
                   </span>
                 )}

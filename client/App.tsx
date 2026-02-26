@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import clsx from "clsx";
 import type { GeocodedPlace, RouteCandidate, SavedRouteDetail as SavedRouteDetailType, SavedStop, StopType } from "./types";
 import { LocationInput } from "./components/LocationInput";
 import { MapView } from "./components/MapView";
@@ -11,6 +12,7 @@ import { useDriveMode } from "./hooks/useDriveMode";
 import { useSavedRoutes } from "./hooks/useSavedRoutes";
 import { useDiscoverRoads } from "./hooks/useDiscoverRoads";
 import { DiscoverPanel } from "./components/DiscoverPanel";
+import { btnBase, btnPrimary, btnSecondary } from "./utils/tw";
 
 export function App() {
   const [panelTab, setPanelTab] = useState<"plan" | "routes" | "discover">("plan");
@@ -226,7 +228,7 @@ export function App() {
   const report = selected?.report ?? null;
 
   return (
-    <div className="app-layout">
+    <div className="grid grid-cols-[1fr_400px] h-full overflow-hidden max-panel:grid-cols-[1fr] max-panel:grid-rows-[1fr_auto]">
       <MapView
         route={route}
         report={report}
@@ -242,37 +244,36 @@ export function App() {
         onSelectDiscoveredRoad={discoverRoads.selectRoad}
       />
 
-      <aside className="panel">
-        <div className="panel-header">
-          <h1>CurveSeek</h1>
-          <p>Plan, save, and share Canadian road routes</p>
+      <aside className="flex flex-col bg-slate-800 border-l border-slate-700 overflow-y-auto overflow-x-hidden scrollbar-thin max-panel:border-l-0 max-panel:border-t max-panel:border-slate-700 max-panel:max-h-[50vh]">
+        <div className="p-6 border-b border-slate-700">
+          <h1 className="text-lg font-bold tracking-tight text-slate-100 mb-1">CurveSeek</h1>
+          <p className="text-[13px] text-slate-400">Plan, save, and share Canadian road routes</p>
         </div>
 
-        <div className="panel-tabs">
-          <button
-            className={`panel-tab${panelTab === "plan" ? " active" : ""}`}
-            onClick={() => setPanelTab("plan")}
-          >
-            Plan
-          </button>
-          <button
-            className={`panel-tab${panelTab === "routes" ? " active" : ""}`}
-            onClick={() => { setPanelTab("routes"); savedRoutes.fetchRoutes(); }}
-          >
-            Routes
-          </button>
-          <button
-            className={`panel-tab${panelTab === "discover" ? " active" : ""}`}
-            onClick={() => setPanelTab("discover")}
-          >
-            Discover
-          </button>
+        <div className="flex border-b border-slate-700">
+          {(["plan", "routes", "discover"] as const).map((tab) => (
+            <button
+              key={tab}
+              className={clsx(
+                "flex-1 px-4 py-3 bg-transparent border-none border-b-2 font-sans text-[13px] font-semibold cursor-pointer transition-colors duration-150",
+                panelTab === tab
+                  ? "text-blue-500 border-b-blue-500"
+                  : "text-slate-500 border-b-transparent hover:text-slate-400"
+              )}
+              onClick={() => {
+                setPanelTab(tab);
+                if (tab === "routes") savedRoutes.fetchRoutes();
+              }}
+            >
+              {tab === "plan" ? "Plan" : tab === "routes" ? "Routes" : "Discover"}
+            </button>
+          ))}
         </div>
 
         {panelTab === "plan" && (
           <>
             <form
-              className="route-form"
+              className="p-6 flex flex-col gap-3 border-b border-slate-700"
               onSubmit={(e) => {
                 e.preventDefault();
                 handleAnalyze();
@@ -298,18 +299,23 @@ export function App() {
                 }}
                 onSelect={setToPlace}
               />
-              <div className="form-actions">
+              <div className="flex gap-3">
                 <button
                   type="submit"
-                  className="btn btn-primary"
+                  className={`${btnPrimary} flex-1`}
                   disabled={!canAnalyze}
                 >
                   {loading ? "Analyzing..." : "Analyze Route"}
                 </button>
                 <button
                   type="button"
-                  className="btn btn-drive"
-                  data-active={isDriving ? "true" : undefined}
+                  className={clsx(
+                    btnBase,
+                    "flex-1",
+                    isDriving
+                      ? "bg-red-500 text-white"
+                      : "bg-slate-700 text-slate-100 hover:bg-slate-600"
+                  )}
                   onClick={() => (isDriving ? stopDrive() : startDrive())}
                 >
                   {isDriving ? "Stop Drive" : "Drive Mode"}
@@ -318,19 +324,22 @@ export function App() {
             </form>
 
             {report && route && (
-              <div className="view-toggle">
-                <button
-                  className={`toggle-btn${viewMode === "condition" ? " active" : ""}`}
-                  onClick={() => setViewMode("condition")}
-                >
-                  Condition
-                </button>
-                <button
-                  className={`toggle-btn${viewMode === "enthusiast" ? " active" : ""}`}
-                  onClick={() => setViewMode("enthusiast")}
-                >
-                  Driving Fun
-                </button>
+              <div className="flex px-6 py-3 border-b border-slate-700">
+                {(["condition", "enthusiast"] as const).map((mode, i) => (
+                  <button
+                    key={mode}
+                    className={clsx(
+                      "flex-1 px-4 py-2 bg-slate-900 border border-slate-700 font-sans text-xs font-semibold tracking-wide cursor-pointer transition-colors duration-150",
+                      i === 0 ? "rounded-l-md border-r-0" : "rounded-r-md",
+                      viewMode === mode
+                        ? "bg-blue-500 border-blue-500 text-white"
+                        : "text-slate-500 hover:bg-slate-700 hover:text-slate-400"
+                    )}
+                    onClick={() => setViewMode(mode)}
+                  >
+                    {mode === "condition" ? "Condition" : "Driving Fun"}
+                  </button>
+                ))}
               </div>
             )}
 
@@ -345,18 +354,22 @@ export function App() {
             )}
 
             {loading && (
-              <div className="loading-bar">
-                <div className="loading-bar-fill" />
+              <div className="h-0.5 bg-slate-700 overflow-hidden">
+                <div className="h-full w-[30%] bg-blue-500 animate-[loading-slide_1.2s_ease-in-out_infinite]" />
               </div>
             )}
 
-            {error && <div className="error-banner" role="alert">{error}</div>}
+            {error && (
+              <div className="mx-6 my-4 px-4 py-3 bg-red-500/15 border border-red-500/30 rounded-md text-red-500 text-[13px]" role="alert">
+                {error}
+              </div>
+            )}
 
             {report && route ? (
               <>
-                <div className="save-route-bar">
+                <div className="px-6 py-3 border-b border-slate-700">
                   <button
-                    className="btn btn-secondary"
+                    className={`${btnSecondary} w-full`}
                     onClick={() => setShowSaveModal(true)}
                   >
                     Save Route
@@ -367,9 +380,9 @@ export function App() {
             ) : (
               !loading &&
               !error && (
-                <div className="empty-state">
+                <div className="flex flex-col items-center justify-center px-6 py-12 text-center flex-1">
                   <svg
-                    className="empty-state-icon"
+                    className="w-12 h-12 mb-4 text-slate-500 opacity-50"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -380,8 +393,8 @@ export function App() {
                     <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
                     <circle cx="12" cy="9" r="2.5" />
                   </svg>
-                  <h2>Plan a route</h2>
-                  <p>
+                  <h2 className="text-[15px] font-semibold text-slate-400 mb-2">Plan a route</h2>
+                  <p className="text-[13px] text-slate-500 max-w-[260px]">
                     Enter a starting point and destination to see road condition
                     data along the way.
                   </p>

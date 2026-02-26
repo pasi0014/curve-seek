@@ -1,7 +1,9 @@
 import React, { useState } from "react";
+import clsx from "clsx";
 import type { DiscoverRoadsResult, DiscoveredRoad, GeocodedPlace } from "../types";
 import { LocationInput } from "./LocationInput";
 import { enthusiastColor, enthusiastRating, formatDistance } from "../utils/helpers";
+import { btnPrimary, labelClasses, enthusiastBadgeColors } from "../utils/tw";
 
 interface DiscoverPanelProps {
   result: DiscoverRoadsResult | null;
@@ -21,6 +23,8 @@ const HW_LABELS: Record<string, string> = {
   primary_link: "Primary Link",
   unclassified: "Unclassified",
 };
+
+const badgeBase = "inline-block px-2 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wide";
 
 export function DiscoverPanel({
   result,
@@ -60,9 +64,9 @@ export function DiscoverPanel({
 
   return (
     <>
-      <form className="discover-form" onSubmit={handleSubmit}>
-        <div className="discover-location-row">
-          <div className="discover-location-input">
+      <form className="p-6 flex flex-col gap-3 border-b border-slate-700" onSubmit={handleSubmit}>
+        <div className="flex gap-2 items-end">
+          <div className="flex-1">
             <LocationInput
               label="Location"
               placeholder="e.g. Ottawa, ON"
@@ -76,7 +80,7 @@ export function DiscoverPanel({
           </div>
           <button
             type="button"
-            className="btn btn-gps"
+            className="bg-slate-700 text-slate-100 px-3 py-3 text-xs font-bold tracking-wide border border-slate-700 rounded-md cursor-pointer transition-colors duration-150 whitespace-nowrap h-10 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={handleGPS}
             disabled={gpsLoading}
             title="Use current location"
@@ -85,12 +89,13 @@ export function DiscoverPanel({
           </button>
         </div>
 
-        <div className="discover-radius">
-          <label>
+        <div className="flex flex-col gap-1">
+          <label className={labelClasses}>
             Radius: <strong>{radiusKm} km</strong>
           </label>
           <input
             type="range"
+            className="w-full accent-blue-500"
             min={10}
             max={100}
             step={5}
@@ -101,7 +106,7 @@ export function DiscoverPanel({
 
         <button
           type="submit"
-          className="btn btn-primary"
+          className={btnPrimary}
           disabled={!place || loading}
         >
           {loading ? "Searching..." : "Find Fun Roads"}
@@ -109,38 +114,44 @@ export function DiscoverPanel({
       </form>
 
       {loading && (
-        <div className="loading-bar">
-          <div className="loading-bar-fill" />
+        <div className="h-0.5 bg-slate-700 overflow-hidden">
+          <div className="h-full w-[30%] bg-blue-500 animate-[loading-slide_1.2s_ease-in-out_infinite]" />
         </div>
       )}
 
-      {error && <div className="error-banner" role="alert">{error}</div>}
+      {error && (
+        <div className="mx-6 my-4 px-4 py-3 bg-red-500/15 border border-red-500/30 rounded-md text-red-500 text-[13px]" role="alert">
+          {error}
+        </div>
+      )}
 
       {result && !loading && (
-        <div className="discover-results">
-          <div className="discover-summary">
+        <div className="flex flex-col flex-1">
+          <div className="px-6 py-3 text-xs text-slate-500 border-b border-slate-700">
             {result.roads.length === 0
               ? `Scanned ${result.totalWaysScanned} ways — no curvy roads found in this area. Try a larger radius or a more rural/hilly location.`
               : `Found ${result.roads.length} curvy road${result.roads.length !== 1 ? "s" : ""} from ${result.totalWaysScanned} ways scanned`}
           </div>
 
-          <div className="discover-road-list">
+          <div className="flex flex-col gap-2 p-4 px-6">
             {result.roads.map((road, i) => {
               const isSelected = selectedRoad?.id === road.id;
               const r = rating(road.enthusiastScore);
               return (
                 <button
                   key={road.id}
-                  className={`discover-road-card${isSelected ? " selected" : ""}`}
+                  className={clsx(
+                    "flex items-center gap-3 px-4 py-3 bg-slate-900 border rounded-lg cursor-pointer transition-[border-color,background] duration-150 text-left font-sans text-slate-100 w-full",
+                    isSelected
+                      ? "border-blue-500 bg-[color-mix(in_srgb,#3b82f6_10%,#0f172a)]"
+                      : "border-slate-700 hover:border-blue-500 hover:bg-[color-mix(in_srgb,#3b82f6_5%,#0f172a)]"
+                  )}
                   onClick={() => onSelectRoad(isSelected ? null : road)}
                 >
-                  <div className="discover-road-rank">#{i + 1}</div>
-                  <div className="discover-road-score-ring">
-                    <svg viewBox="0 0 36 36">
-                      <circle
-                        className="score-ring-bg"
-                        cx="18" cy="18" r="15"
-                      />
+                  <div className="text-[11px] font-bold text-slate-500 min-w-[24px] text-center">#{i + 1}</div>
+                  <div className="relative shrink-0" style={{ width: 40, height: 40 }}>
+                    <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+                      <circle className="score-ring-bg" cx="18" cy="18" r="15" />
                       <circle
                         className="score-ring-fill"
                         cx="18" cy="18" r="15"
@@ -150,26 +161,25 @@ export function DiscoverPanel({
                         }}
                       />
                     </svg>
-                    <span className="discover-road-score-value">
+                    <span className="absolute inset-0 flex items-center justify-center text-[13px] font-bold tabular-nums">
                       {road.enthusiastScore}
                     </span>
                   </div>
-                  <div className="discover-road-info">
-                    <div className="discover-road-name">{road.name}</div>
-                    <div className="discover-road-meta">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-semibold whitespace-nowrap overflow-hidden text-ellipsis">{road.name}</div>
+                    <div className="flex gap-3 text-[11px] text-slate-500 mt-0.5">
                       <span>{HW_LABELS[road.highwayType] ?? road.highwayType}</span>
                       <span>{formatDistance(road.lengthMeters / 1000)}</span>
                       <span>{road.curvaturePerKm} deg/km</span>
                     </div>
-                    <div className="discover-road-tags">
-                      <span
-                        className="enthusiast-badge quality-badge"
-                        data-enthusiast={r}
-                      >
+                    <div className="flex gap-2 mt-1 items-center">
+                      <span className={`${badgeBase} ${enthusiastBadgeColors[r] ?? ""}`}>
                         {r}
                       </span>
                       {road.surface && (
-                        <span className="discover-road-tag">{road.surface}</span>
+                        <span className="text-[10px] px-2 py-px bg-slate-700 rounded-[3px] text-slate-400">
+                          {road.surface}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -181,9 +191,9 @@ export function DiscoverPanel({
       )}
 
       {!result && !loading && !error && (
-        <div className="empty-state">
+        <div className="flex flex-col items-center justify-center px-6 py-12 text-center flex-1">
           <svg
-            className="empty-state-icon"
+            className="w-12 h-12 mb-4 text-slate-500 opacity-50"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -194,8 +204,8 @@ export function DiscoverPanel({
             <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
             <circle cx="12" cy="10" r="3" />
           </svg>
-          <h2>Discover fun roads</h2>
-          <p>
+          <h2 className="text-[15px] font-semibold text-slate-400 mb-2">Discover fun roads</h2>
+          <p className="text-[13px] text-slate-500 max-w-[260px]">
             Enter a location or use GPS to find the best driving roads nearby,
             scored for curvature, surface, and road character.
           </p>
