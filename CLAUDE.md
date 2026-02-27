@@ -53,9 +53,8 @@ bun run start
 ## APIs
 
 - Hono for HTTP routing (not express, not raw Bun.serve routes)
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
+- Drizzle ORM + `postgres` driver for PostgreSQL (Supabase). Schema in `server/db/schema.ts`, connection in `server/db/index.ts`.
 - `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
 - `WebSocket` is built-in. Don't use `ws`.
 - Prefer `Bun.file` over `node:fs`'s readFile/writeFile
 

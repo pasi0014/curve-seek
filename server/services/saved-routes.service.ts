@@ -11,7 +11,7 @@ import {
   deleteRouteStop,
 } from "../lib/db.ts";
 
-export function create(
+export async function create(
   input: {
     name: string;
     description?: string;
@@ -26,9 +26,9 @@ export function create(
     durationS: number;
   },
   event: WideEvent
-): { id: string } {
+): Promise<{ id: string }> {
   const id = crypto.randomUUID();
-  createSavedRoute({
+  await createSavedRoute({
     id,
     name: input.name,
     description: input.description,
@@ -46,11 +46,11 @@ export function create(
   return { id };
 }
 
-export function getById(id: string, event: WideEvent) {
-  const route = getSavedRoute(id);
+export async function getById(id: string, event: WideEvent) {
+  const route = await getSavedRoute(id);
   if (!route) return null;
 
-  const stops = getRouteStops(id);
+  const stops = await getRouteStops(id);
   event.set("saved_route_id", id);
   event.set("stop_count", stops.length);
 
@@ -67,7 +67,7 @@ export function getById(id: string, event: WideEvent) {
     geometry: JSON.parse(route.geometry),
     distanceM: route.distance_m,
     durationS: route.duration_s,
-    isPublic: route.is_public === 1,
+    isPublic: route.is_public,
     createdAt: route.created_at,
     updatedAt: route.updated_at,
     stops: stops.map((s) => ({
@@ -82,8 +82,8 @@ export function getById(id: string, event: WideEvent) {
   };
 }
 
-export function list(limit: number, offset: number, search: string | undefined, event: WideEvent) {
-  const { rows, total } = listSavedRoutes(limit, offset, search);
+export async function list(limit: number, offset: number, search: string | undefined, event: WideEvent) {
+  const { rows, total } = await listSavedRoutes(limit, offset, search);
   event.set("saved_routes_total", total);
   event.set("saved_routes_returned", rows.length);
 
@@ -102,21 +102,21 @@ export function list(limit: number, offset: number, search: string | undefined, 
   };
 }
 
-export function update(
+export async function update(
   id: string,
   patch: Parameters<typeof updateSavedRoute>[1],
   event: WideEvent
-): boolean {
+): Promise<boolean> {
   event.set("saved_route_id", id);
-  return updateSavedRoute(id, patch);
+  return await updateSavedRoute(id, patch);
 }
 
-export function remove(id: string, event: WideEvent): boolean {
+export async function remove(id: string, event: WideEvent): Promise<boolean> {
   event.set("saved_route_id", id);
-  return deleteSavedRoute(id);
+  return await deleteSavedRoute(id);
 }
 
-export function addStop(
+export async function addStop(
   routeId: string,
   input: {
     stopType: string;
@@ -129,11 +129,11 @@ export function addStop(
   event: WideEvent
 ) {
   // If no position given, append after existing stops
-  const existing = getRouteStops(routeId);
+  const existing = await getRouteStops(routeId);
   const position = input.position ?? existing.length;
 
   const id = crypto.randomUUID();
-  addRouteStop({
+  await addRouteStop({
     id,
     routeId,
     position,
@@ -149,16 +149,16 @@ export function addStop(
   return { id, position };
 }
 
-export function editStop(
+export async function editStop(
   stopId: string,
   patch: Parameters<typeof updateRouteStop>[1],
   event: WideEvent
-): boolean {
+): Promise<boolean> {
   event.set("stop_id", stopId);
-  return updateRouteStop(stopId, patch);
+  return await updateRouteStop(stopId, patch);
 }
 
-export function removeStop(stopId: string, event: WideEvent): boolean {
+export async function removeStop(stopId: string, event: WideEvent): Promise<boolean> {
   event.set("stop_id", stopId);
-  return deleteRouteStop(stopId);
+  return await deleteRouteStop(stopId);
 }

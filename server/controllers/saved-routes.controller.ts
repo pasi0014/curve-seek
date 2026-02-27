@@ -13,7 +13,7 @@ app.post("/", async (c) => {
   }
 
   const event = c.get("event");
-  const result = savedRoutes.create(
+  const result = await savedRoutes.create(
     { name, description, originName, destName, originLat, originLng, destLat, destLng, geometry, distanceM, durationS },
     event
   );
@@ -21,19 +21,19 @@ app.post("/", async (c) => {
 });
 
 // List public routes
-app.get("/", (c) => {
+app.get("/", async (c) => {
   const limit = Math.min(parseInt(c.req.query("limit") ?? "20"), 100);
   const offset = parseInt(c.req.query("offset") ?? "0");
   const q = c.req.query("q") || undefined;
 
   const event = c.get("event");
-  return c.json(savedRoutes.list(limit, offset, q, event));
+  return c.json(await savedRoutes.list(limit, offset, q, event));
 });
 
 // Get a single route
-app.get("/:id", (c) => {
+app.get("/:id", async (c) => {
   const event = c.get("event");
-  const route = savedRoutes.getById(c.req.param("id"), event);
+  const route = await savedRoutes.getById(c.req.param("id"), event);
   if (!route) return c.json({ error: "Route not found" }, 404);
   return c.json(route);
 });
@@ -48,15 +48,15 @@ app.patch("/:id", async (c) => {
     if (body[key] !== undefined) patch[key] = key === "geometry" ? JSON.stringify(body[key]) : body[key];
   }
 
-  const updated = savedRoutes.update(c.req.param("id"), patch, event);
+  const updated = await savedRoutes.update(c.req.param("id"), patch, event);
   if (!updated) return c.json({ error: "Route not found or no changes" }, 404);
   return c.json({ ok: true });
 });
 
 // Delete a route
-app.delete("/:id", (c) => {
+app.delete("/:id", async (c) => {
   const event = c.get("event");
-  const deleted = savedRoutes.remove(c.req.param("id"), event);
+  const deleted = await savedRoutes.remove(c.req.param("id"), event);
   if (!deleted) return c.json({ error: "Route not found" }, 404);
   return c.json({ ok: true });
 });
@@ -71,7 +71,7 @@ app.post("/:id/stops", async (c) => {
   }
 
   const event = c.get("event");
-  const result = savedRoutes.addStop(c.req.param("id"), { stopType, name, note, lat, lng, position }, event);
+  const result = await savedRoutes.addStop(c.req.param("id"), { stopType, name, note, lat, lng, position }, event);
   return c.json(result, 201);
 });
 
@@ -85,15 +85,15 @@ app.patch("/:id/stops/:stopId", async (c) => {
     if (body[key] !== undefined) patch[key] = body[key];
   }
 
-  const updated = savedRoutes.editStop(c.req.param("stopId"), patch, event);
+  const updated = await savedRoutes.editStop(c.req.param("stopId"), patch, event);
   if (!updated) return c.json({ error: "Stop not found or no changes" }, 404);
   return c.json({ ok: true });
 });
 
 // Delete a stop
-app.delete("/:id/stops/:stopId", (c) => {
+app.delete("/:id/stops/:stopId", async (c) => {
   const event = c.get("event");
-  const deleted = savedRoutes.removeStop(c.req.param("stopId"), event);
+  const deleted = await savedRoutes.removeStop(c.req.param("stopId"), event);
   if (!deleted) return c.json({ error: "Stop not found" }, 404);
   return c.json({ ok: true });
 });

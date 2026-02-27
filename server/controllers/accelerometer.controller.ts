@@ -8,7 +8,7 @@ accelerometer.post("/", async (c) => {
   const { sessionId, readings } = body;
 
   const event = c.get("event");
-  const result = processAccelerometerData({ sessionId, readings }, event);
+  const result = await processAccelerometerData({ sessionId, readings }, event);
   return c.json(result);
 });
 

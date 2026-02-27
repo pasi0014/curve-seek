@@ -1,177 +1,93 @@
-import { Database } from "bun:sqlite";
-import { join } from "node:path";
+import { eq, and, between, like, or, sql, count, desc } from "drizzle-orm";
+import { db } from "../db";
+import {
+  accelerometerReadings,
+  segmentRoughness,
+  roadReports,
+  savedRoutes,
+  routeStops,
+} from "../db/schema";
 
-const DB_PATH =
-  process.env.DB_PATH ??
-  join(import.meta.dir, "..", "..", "road-conditions.sqlite");
-const db = new Database(DB_PATH, { create: true });
+// --- Accelerometer ---
 
-db.run("PRAGMA journal_mode = WAL");
-
-db.run(`
-  CREATE TABLE IF NOT EXISTS accelerometer_readings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id TEXT NOT NULL,
-    timestamp REAL NOT NULL,
-    lat REAL NOT NULL,
-    lng REAL NOT NULL,
-    x REAL NOT NULL,
-    y REAL NOT NULL,
-    z REAL NOT NULL,
-    speed REAL NOT NULL,
-    created_at TEXT DEFAULT (datetime('now'))
-  )
-`);
-
-db.run(`
-  CREATE TABLE IF NOT EXISTS segment_roughness (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    lat REAL NOT NULL,
-    lng REAL NOT NULL,
-    iri_score REAL NOT NULL,
-    sample_count INTEGER DEFAULT 1,
-    last_updated TEXT DEFAULT (datetime('now'))
-  )
-`);
-
-db.run(`
-  CREATE TABLE IF NOT EXISTS road_reports (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    lat REAL NOT NULL,
-    lng REAL NOT NULL,
-    report_type TEXT NOT NULL,
-    severity INTEGER NOT NULL,
-    description TEXT,
-    created_at TEXT DEFAULT (datetime('now'))
-  )
-`);
-
-db.run(`CREATE INDEX IF NOT EXISTS idx_roughness_coords ON segment_roughness(lat, lng)`);
-db.run(`CREATE INDEX IF NOT EXISTS idx_readings_session ON accelerometer_readings(session_id)`);
-
-db.run(`
-  CREATE TABLE IF NOT EXISTS saved_routes (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    description TEXT,
-    origin_name TEXT NOT NULL,
-    dest_name TEXT NOT NULL,
-    origin_lat REAL NOT NULL,
-    origin_lng REAL NOT NULL,
-    dest_lat REAL NOT NULL,
-    dest_lng REAL NOT NULL,
-    geometry TEXT NOT NULL,
-    distance_m REAL NOT NULL,
-    duration_s REAL NOT NULL,
-    is_public INTEGER NOT NULL DEFAULT 1,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )
-`);
-
-db.run(`
-  CREATE TABLE IF NOT EXISTS route_stops (
-    id TEXT PRIMARY KEY,
-    route_id TEXT NOT NULL REFERENCES saved_routes(id) ON DELETE CASCADE,
-    position INTEGER NOT NULL,
-    stop_type TEXT NOT NULL,
-    name TEXT NOT NULL,
-    note TEXT,
-    lat REAL NOT NULL,
-    lng REAL NOT NULL,
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )
-`);
-
-db.run(`CREATE INDEX IF NOT EXISTS idx_route_stops_route ON route_stops(route_id, position)`);
-db.run(`CREATE INDEX IF NOT EXISTS idx_saved_routes_public ON saved_routes(is_public, created_at)`);
-
-export function saveAccelerometerReadings(
+export async function saveAccelerometerReadings(
   sessionId: string,
   readings: { timestamp: number; lat: number; lng: number; x: number; y: number; z: number; speed: number }[]
 ) {
-  const stmt = db.prepare(
-    `INSERT INTO accelerometer_readings (session_id, timestamp, lat, lng, x, y, z, speed)
-     VALUES ($sessionId, $timestamp, $lat, $lng, $x, $y, $z, $speed)`
+  await db.insert(accelerometerReadings).values(
+    readings.map((r) => ({
+      sessionId,
+      timestamp: r.timestamp,
+      lat: r.lat,
+      lng: r.lng,
+      x: r.x,
+      y: r.y,
+      z: r.z,
+      speed: r.speed,
+    }))
   );
-  const tx = db.transaction(() => {
-    for (const r of readings) {
-      stmt.run({
-        $sessionId: sessionId,
-        $timestamp: r.timestamp,
-        $lat: r.lat,
-        $lng: r.lng,
-        $x: r.x,
-        $y: r.y,
-        $z: r.z,
-        $speed: r.speed,
-      });
-    }
-  });
-  tx();
 }
 
-export function saveSegmentRoughness(lat: number, lng: number, iri: number) {
+export async function saveSegmentRoughness(lat: number, lng: number, iri: number) {
   const gridLat = Math.round(lat * 2000) / 2000; // ~50m grid
   const gridLng = Math.round(lng * 2000) / 2000;
 
-  const existing = db
-    .prepare(
-      `SELECT id, iri_score, sample_count FROM segment_roughness
-       WHERE lat = ? AND lng = ?`
-    )
-    .get(gridLat, gridLng) as { id: number; iri_score: number; sample_count: number } | null;
+  const existing = await db
+    .select({
+      id: segmentRoughness.id,
+      iriScore: segmentRoughness.iriScore,
+      sampleCount: segmentRoughness.sampleCount,
+    })
+    .from(segmentRoughness)
+    .where(and(eq(segmentRoughness.lat, gridLat), eq(segmentRoughness.lng, gridLng)))
+    .limit(1);
 
-  if (existing) {
-    const newCount = existing.sample_count + 1;
-    const newIri =
-      (existing.iri_score * existing.sample_count + iri) / newCount;
-    db.prepare(
-      `UPDATE segment_roughness SET iri_score = ?, sample_count = ?, last_updated = datetime('now')
-       WHERE id = ?`
-    ).run(newIri, newCount, existing.id);
+  if (existing.length > 0) {
+    const row = existing[0];
+    const oldCount = row.sampleCount ?? 1;
+    const newCount = oldCount + 1;
+    const newIri = (row.iriScore * oldCount + iri) / newCount;
+    await db
+      .update(segmentRoughness)
+      .set({ iriScore: newIri, sampleCount: newCount, lastUpdated: new Date() })
+      .where(eq(segmentRoughness.id, row.id));
   } else {
-    db.prepare(
-      `INSERT INTO segment_roughness (lat, lng, iri_score) VALUES (?, ?, ?)`
-    ).run(gridLat, gridLng, iri);
+    await db.insert(segmentRoughness).values({ lat: gridLat, lng: gridLng, iriScore: iri });
   }
 }
 
-export function getCrowdRoughness(
+export async function getCrowdRoughness(
   lat: number,
   lng: number,
   radiusDeg = 0.005
-): number | null {
-  const rows = db
-    .prepare(
-      `SELECT iri_score, sample_count FROM segment_roughness
-       WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?`
-    )
-    .all(
-      lat - radiusDeg,
-      lat + radiusDeg,
-      lng - radiusDeg,
-      lng + radiusDeg
-    ) as { iri_score: number; sample_count: number }[];
+): Promise<number | null> {
+  const rows = await db
+    .select({
+      iriScore: segmentRoughness.iriScore,
+      sampleCount: segmentRoughness.sampleCount,
+    })
+    .from(segmentRoughness)
+    .where(
+      and(
+        between(segmentRoughness.lat, lat - radiusDeg, lat + radiusDeg),
+        between(segmentRoughness.lng, lng - radiusDeg, lng + radiusDeg)
+      )
+    );
 
   if (rows.length === 0) return null;
 
-  const totalSamples = rows.reduce((s, r) => s + r.sample_count, 0);
-  const weightedSum = rows.reduce(
-    (s, r) => s + r.iri_score * r.sample_count,
-    0
-  );
+  const totalSamples = rows.reduce((s, r) => s + (r.sampleCount ?? 1), 0);
+  const weightedSum = rows.reduce((s, r) => s + r.iriScore * (r.sampleCount ?? 1), 0);
   return weightedSum / totalSamples;
 }
 
-export function getCrowdScoresForSegments(
+export async function getCrowdScoresForSegments(
   segments: { index: number; lat: number; lng: number }[]
-): Map<number, number> {
+): Promise<Map<number, number>> {
   const result = new Map<number, number>();
   for (const seg of segments) {
-    const iri = getCrowdRoughness(seg.lat, seg.lng);
+    const iri = await getCrowdRoughness(seg.lat, seg.lng);
     if (iri !== null) {
-      // Convert IRI to 0-100 score. IRI < 2 = excellent, > 8 = terrible
       const score = Math.max(0, Math.min(100, 100 - (iri - 1) * 14));
       result.set(seg.index, Math.round(score));
     }
@@ -179,16 +95,22 @@ export function getCrowdScoresForSegments(
   return result;
 }
 
-export function saveRoadReport(
+// --- Road Reports ---
+
+export async function saveRoadReport(
   lat: number,
   lng: number,
   type: string,
   severity: number,
   description?: string
 ) {
-  db.prepare(
-    `INSERT INTO road_reports (lat, lng, report_type, severity, description) VALUES (?, ?, ?, ?, ?)`
-  ).run(lat, lng, type, severity, description ?? null);
+  await db.insert(roadReports).values({
+    lat,
+    lng,
+    reportType: type,
+    severity,
+    description: description ?? null,
+  });
 }
 
 // --- Saved Routes ---
@@ -206,7 +128,7 @@ export interface SavedRouteRow {
   geometry: string;
   distance_m: number;
   duration_s: number;
-  is_public: number;
+  is_public: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -223,7 +145,7 @@ export interface RouteStopRow {
   created_at: string;
 }
 
-export function createSavedRoute(route: {
+export async function createSavedRoute(route: {
   id: string;
   name: string;
   description?: string;
@@ -236,58 +158,130 @@ export function createSavedRoute(route: {
   geometry: string;
   distanceM: number;
   durationS: number;
-}): void {
-  db.prepare(
-    `INSERT INTO saved_routes (id, name, description, origin_name, dest_name, origin_lat, origin_lng, dest_lat, dest_lng, geometry, distance_m, duration_s)
-     VALUES ($id, $name, $description, $originName, $destName, $originLat, $originLng, $destLat, $destLng, $geometry, $distanceM, $durationS)`
-  ).run({
-    $id: route.id,
-    $name: route.name,
-    $description: route.description ?? null,
-    $originName: route.originName,
-    $destName: route.destName,
-    $originLat: route.originLat,
-    $originLng: route.originLng,
-    $destLat: route.destLat,
-    $destLng: route.destLng,
-    $geometry: route.geometry,
-    $distanceM: route.distanceM,
-    $durationS: route.durationS,
+}): Promise<void> {
+  await db.insert(savedRoutes).values({
+    id: route.id,
+    name: route.name,
+    description: route.description ?? null,
+    originName: route.originName,
+    destName: route.destName,
+    originLat: route.originLat,
+    originLng: route.originLng,
+    destLat: route.destLat,
+    destLng: route.destLng,
+    geometry: route.geometry,
+    distanceM: route.distanceM,
+    durationS: route.durationS,
   });
 }
 
-export function getSavedRoute(id: string): SavedRouteRow | null {
-  return db.prepare(`SELECT * FROM saved_routes WHERE id = ?`).get(id) as SavedRouteRow | null;
+export async function getSavedRoute(id: string): Promise<SavedRouteRow | null> {
+  const rows = await db.select().from(savedRoutes).where(eq(savedRoutes.id, id)).limit(1);
+  if (rows.length === 0) return null;
+  const r = rows[0];
+  return {
+    id: r.id,
+    name: r.name,
+    description: r.description,
+    origin_name: r.originName,
+    dest_name: r.destName,
+    origin_lat: r.originLat,
+    origin_lng: r.originLng,
+    dest_lat: r.destLat,
+    dest_lng: r.destLng,
+    geometry: r.geometry,
+    distance_m: r.distanceM,
+    duration_s: r.durationS,
+    is_public: r.isPublic,
+    created_at: r.createdAt.toISOString(),
+    updated_at: r.updatedAt.toISOString(),
+  };
 }
 
-export function listSavedRoutes(
+export async function listSavedRoutes(
   limit: number,
   offset: number,
   search?: string
-): { rows: (SavedRouteRow & { stop_count: number })[]; total: number } {
-  const baseWhere = `WHERE is_public = 1${search ? ` AND (name LIKE $search OR origin_name LIKE $search OR dest_name LIKE $search)` : ""}`;
-  const params: Record<string, any> = {};
-  if (search) params.$search = `%${search}%`;
+): Promise<{ rows: (SavedRouteRow & { stop_count: number })[]; total: number }> {
+  const conditions = [eq(savedRoutes.isPublic, true)];
+  if (search) {
+    conditions.push(
+      or(
+        like(savedRoutes.name, `%${search}%`),
+        like(savedRoutes.originName, `%${search}%`),
+        like(savedRoutes.destName, `%${search}%`)
+      )!
+    );
+  }
+  const whereClause = and(...conditions);
 
-  const total = (
-    db.prepare(`SELECT COUNT(*) as count FROM saved_routes ${baseWhere}`).get(params) as { count: number }
-  ).count;
+  // Get total count
+  const totalResult = await db
+    .select({ count: count() })
+    .from(savedRoutes)
+    .where(whereClause);
+  const total = totalResult[0].count;
 
-  const rows = db
-    .prepare(
-      `SELECT sr.*, COALESCE(sc.cnt, 0) as stop_count
-       FROM saved_routes sr
-       LEFT JOIN (SELECT route_id, COUNT(*) as cnt FROM route_stops GROUP BY route_id) sc ON sc.route_id = sr.id
-       ${baseWhere}
-       ORDER BY sr.created_at DESC
-       LIMIT $limit OFFSET $offset`
-    )
-    .all({ ...params, $limit: limit, $offset: offset }) as (SavedRouteRow & { stop_count: number })[];
+  // Get rows with stop count via subquery
+  const stopCountSq = db
+    .select({
+      routeId: routeStops.routeId,
+      cnt: count().as("cnt"),
+    })
+    .from(routeStops)
+    .groupBy(routeStops.routeId)
+    .as("sc");
 
-  return { rows, total };
+  const rows = await db
+    .select({
+      id: savedRoutes.id,
+      name: savedRoutes.name,
+      description: savedRoutes.description,
+      originName: savedRoutes.originName,
+      destName: savedRoutes.destName,
+      originLat: savedRoutes.originLat,
+      originLng: savedRoutes.originLng,
+      destLat: savedRoutes.destLat,
+      destLng: savedRoutes.destLng,
+      geometry: savedRoutes.geometry,
+      distanceM: savedRoutes.distanceM,
+      durationS: savedRoutes.durationS,
+      isPublic: savedRoutes.isPublic,
+      createdAt: savedRoutes.createdAt,
+      updatedAt: savedRoutes.updatedAt,
+      stopCount: sql<number>`COALESCE(${stopCountSq.cnt}, 0)`.as("stop_count"),
+    })
+    .from(savedRoutes)
+    .leftJoin(stopCountSq, eq(stopCountSq.routeId, savedRoutes.id))
+    .where(whereClause)
+    .orderBy(desc(savedRoutes.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  return {
+    rows: rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      description: r.description,
+      origin_name: r.originName,
+      dest_name: r.destName,
+      origin_lat: r.originLat,
+      origin_lng: r.originLng,
+      dest_lat: r.destLat,
+      dest_lng: r.destLng,
+      geometry: r.geometry,
+      distance_m: r.distanceM,
+      duration_s: r.durationS,
+      is_public: r.isPublic,
+      created_at: r.createdAt.toISOString(),
+      updated_at: r.updatedAt.toISOString(),
+      stop_count: r.stopCount ?? 0,
+    })),
+    total,
+  };
 }
 
-export function updateSavedRoute(
+export async function updateSavedRoute(
   id: string,
   patch: Partial<{
     name: string;
@@ -299,38 +293,51 @@ export function updateSavedRoute(
     destLng: number;
     destName: string;
   }>
-): boolean {
-  const sets: string[] = [];
-  const params: Record<string, any> = { $id: id };
+): Promise<boolean> {
+  const sets: Record<string, any> = {};
 
-  if (patch.name !== undefined) { sets.push("name = $name"); params.$name = patch.name; }
-  if (patch.description !== undefined) { sets.push("description = $description"); params.$description = patch.description; }
-  if (patch.geometry !== undefined) { sets.push("geometry = $geometry"); params.$geometry = patch.geometry; }
-  if (patch.distanceM !== undefined) { sets.push("distance_m = $distanceM"); params.$distanceM = patch.distanceM; }
-  if (patch.durationS !== undefined) { sets.push("duration_s = $durationS"); params.$durationS = patch.durationS; }
-  if (patch.destLat !== undefined) { sets.push("dest_lat = $destLat"); params.$destLat = patch.destLat; }
-  if (patch.destLng !== undefined) { sets.push("dest_lng = $destLng"); params.$destLng = patch.destLng; }
-  if (patch.destName !== undefined) { sets.push("dest_name = $destName"); params.$destName = patch.destName; }
+  if (patch.name !== undefined) sets.name = patch.name;
+  if (patch.description !== undefined) sets.description = patch.description;
+  if (patch.geometry !== undefined) sets.geometry = patch.geometry;
+  if (patch.distanceM !== undefined) sets.distanceM = patch.distanceM;
+  if (patch.durationS !== undefined) sets.durationS = patch.durationS;
+  if (patch.destLat !== undefined) sets.destLat = patch.destLat;
+  if (patch.destLng !== undefined) sets.destLng = patch.destLng;
+  if (patch.destName !== undefined) sets.destName = patch.destName;
 
-  if (sets.length === 0) return false;
-  sets.push("updated_at = datetime('now')");
+  if (Object.keys(sets).length === 0) return false;
+  sets.updatedAt = new Date();
 
-  const result = db.prepare(`UPDATE saved_routes SET ${sets.join(", ")} WHERE id = $id`).run(params);
-  return result.changes > 0;
+  const result = await db.update(savedRoutes).set(sets).where(eq(savedRoutes.id, id));
+  return (result as any).rowCount > 0;
 }
 
-export function deleteSavedRoute(id: string): boolean {
-  const result = db.prepare(`DELETE FROM saved_routes WHERE id = ?`).run(id);
-  return result.changes > 0;
+export async function deleteSavedRoute(id: string): Promise<boolean> {
+  const result = await db.delete(savedRoutes).where(eq(savedRoutes.id, id));
+  return (result as any).rowCount > 0;
 }
 
-export function getRouteStops(routeId: string): RouteStopRow[] {
-  return db
-    .prepare(`SELECT * FROM route_stops WHERE route_id = ? ORDER BY position`)
-    .all(routeId) as RouteStopRow[];
+export async function getRouteStops(routeId: string): Promise<RouteStopRow[]> {
+  const rows = await db
+    .select()
+    .from(routeStops)
+    .where(eq(routeStops.routeId, routeId))
+    .orderBy(routeStops.position);
+
+  return rows.map((r) => ({
+    id: r.id,
+    route_id: r.routeId,
+    position: r.position,
+    stop_type: r.stopType,
+    name: r.name,
+    note: r.note,
+    lat: r.lat,
+    lng: r.lng,
+    created_at: r.createdAt.toISOString(),
+  }));
 }
 
-export function addRouteStop(stop: {
+export async function addRouteStop(stop: {
   id: string;
   routeId: string;
   position: number;
@@ -339,44 +346,38 @@ export function addRouteStop(stop: {
   note?: string;
   lat: number;
   lng: number;
-}): void {
-  db.prepare(
-    `INSERT INTO route_stops (id, route_id, position, stop_type, name, note, lat, lng)
-     VALUES ($id, $routeId, $position, $stopType, $name, $note, $lat, $lng)`
-  ).run({
-    $id: stop.id,
-    $routeId: stop.routeId,
-    $position: stop.position,
-    $stopType: stop.stopType,
-    $name: stop.name,
-    $note: stop.note ?? null,
-    $lat: stop.lat,
-    $lng: stop.lng,
+}): Promise<void> {
+  await db.insert(routeStops).values({
+    id: stop.id,
+    routeId: stop.routeId,
+    position: stop.position,
+    stopType: stop.stopType,
+    name: stop.name,
+    note: stop.note ?? null,
+    lat: stop.lat,
+    lng: stop.lng,
   });
 }
 
-export function updateRouteStop(
+export async function updateRouteStop(
   stopId: string,
   patch: Partial<{ name: string; note: string; stopType: string; lat: number; lng: number }>
-): boolean {
-  const sets: string[] = [];
-  const params: Record<string, any> = { $id: stopId };
+): Promise<boolean> {
+  const sets: Record<string, any> = {};
 
-  if (patch.name !== undefined) { sets.push("name = $name"); params.$name = patch.name; }
-  if (patch.note !== undefined) { sets.push("note = $note"); params.$note = patch.note; }
-  if (patch.stopType !== undefined) { sets.push("stop_type = $stopType"); params.$stopType = patch.stopType; }
-  if (patch.lat !== undefined) { sets.push("lat = $lat"); params.$lat = patch.lat; }
-  if (patch.lng !== undefined) { sets.push("lng = $lng"); params.$lng = patch.lng; }
+  if (patch.name !== undefined) sets.name = patch.name;
+  if (patch.note !== undefined) sets.note = patch.note;
+  if (patch.stopType !== undefined) sets.stopType = patch.stopType;
+  if (patch.lat !== undefined) sets.lat = patch.lat;
+  if (patch.lng !== undefined) sets.lng = patch.lng;
 
-  if (sets.length === 0) return false;
+  if (Object.keys(sets).length === 0) return false;
 
-  const result = db.prepare(`UPDATE route_stops SET ${sets.join(", ")} WHERE id = $id`).run(params);
-  return result.changes > 0;
+  const result = await db.update(routeStops).set(sets).where(eq(routeStops.id, stopId));
+  return (result as any).rowCount > 0;
 }
 
-export function deleteRouteStop(stopId: string): boolean {
-  const result = db.prepare(`DELETE FROM route_stops WHERE id = ?`).run(stopId);
-  return result.changes > 0;
+export async function deleteRouteStop(stopId: string): Promise<boolean> {
+  const result = await db.delete(routeStops).where(eq(routeStops.id, stopId));
+  return (result as any).rowCount > 0;
 }
-
-export { db };

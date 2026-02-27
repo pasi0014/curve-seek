@@ -15,17 +15,17 @@ interface AccelerometerInput {
   }[];
 }
 
-export function processAccelerometerData(input: AccelerometerInput, event: WideEvent) {
+export async function processAccelerometerData(input: AccelerometerInput, event: WideEvent) {
   const { sessionId, readings } = input;
 
   event.set("accel_session_id", sessionId);
   event.set("accel_readings_saved", readings.length);
 
-  saveAccelerometerReadings(sessionId, readings);
+  await saveAccelerometerReadings(sessionId, readings);
 
   const processed = processRecording(readings);
   for (const p of processed) {
-    saveSegmentRoughness(p.lat, p.lng, p.iri);
+    await saveSegmentRoughness(p.lat, p.lng, p.iri);
   }
 
   event.set("accel_cells_processed", processed.length);

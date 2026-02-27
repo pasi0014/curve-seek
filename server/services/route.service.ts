@@ -36,8 +36,8 @@ async function analyzeOneRoute(
 
   const { surfaceData, roadTags } = osmResult;
 
-  // Get crowd-sourced data from local DB
-  const crowdScores = getCrowdScoresForSegments(
+  // Get crowd-sourced data from DB
+  const crowdScores = await getCrowdScoresForSegments(
     segments.map((s) => ({
       index: s.index,
       ...segmentMidpoint(s),
