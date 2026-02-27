@@ -1,6 +1,6 @@
-import { saveAccelerometerReadings, saveSegmentRoughness } from "../lib/db.ts";
-import { processRecording } from "../lib/accelerometer.ts";
-import type { WideEvent } from "../logger.ts";
+import { saveAccelerometerReadings, saveSegmentRoughness } from "../../lib/db.ts";
+import { processRecording } from "../../lib/accelerometer.ts";
+import type { WideEvent } from "../../logger.ts";
 
 interface AccelerometerInput {
   sessionId: string;
