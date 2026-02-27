@@ -1,7 +1,7 @@
-import { queryRoadsInRadius } from "../lib/overpass.ts";
-import { groupWaysIntoRoads, scoreWayGroup } from "../lib/discover.ts";
-import type { DiscoverRoadsResult, Coordinate } from "../lib/types.ts";
-import type { WideEvent } from "../logger.ts";
+import { queryRoadsInRadius } from "../../lib/overpass.ts";
+import { groupWaysIntoRoads, scoreWayGroup } from "../../lib/discover.ts";
+import type { DiscoverRoadsResult, Coordinate } from "../../lib/types.ts";
+import type { WideEvent } from "../../logger.ts";
 
 interface DiscoverInput {
   lat: number;

@@ -1,4 +1,4 @@
-import type { WideEvent } from "../logger.ts";
+import type { WideEvent } from "../../logger.ts";
 import {
   createSavedRoute,
   getSavedRoute,
@@ -9,7 +9,7 @@ import {
   addRouteStop,
   updateRouteStop,
   deleteRouteStop,
-} from "../lib/db.ts";
+} from "../../lib/db.ts";
 
 export async function create(
   input: {

@@ -1,5 +1,5 @@
-import { geocode } from "../lib/routing.ts";
-import type { WideEvent } from "../logger.ts";
+import { geocode } from "../../lib/routing.ts";
+import type { WideEvent } from "../../logger.ts";
 
 export async function geocodeQuery(query: string, event: WideEvent) {
   event.set("geocode_query", query);

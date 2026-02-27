@@ -14,12 +14,16 @@ Default to using Bun instead of Node.js.
 
 ## Project Structure
 
-- `server/` — Hono backend on Bun
-  - `server/index.ts` — App entry, mounts controllers, `Bun.serve()`
-  - `server/controllers/` — Hono sub-apps for each route group
-  - `server/services/` — Business logic, uses `WideEvent` for structured logging
-  - `server/middleware/wide-event.ts` — Creates one `WideEvent` per request
+- `server/` — Hono backend on Bun (NordikOps architecture)
+  - `server/index.ts` — Composition root (config → Server → start → shutdown)
+  - `server/config/index.ts` — Typed config from env vars + validation
+  - `server/bootstrap/server.ts` — Server class (Hono app, middleware, routes, lifecycle)
+  - `server/routes/api.ts` — Central route composition (mounts all controllers)
+  - `server/app/controllers/` — Hono sub-apps for each route group
+  - `server/app/services/` — Business logic, uses `WideEvent` for structured logging
+  - `server/app/middleware/wide-event.ts` — Creates one `WideEvent` per request
   - `server/logger.ts` — `WideEvent` class (set, incr, time, emit)
+  - `server/db/` — Drizzle ORM schema + connection
   - `server/lib/` — Domain modules (routing, scoring, db, etc.) + tests
 - `client/` — React frontend, bundled by Vite
   - `client/index.html` — HTML entry point

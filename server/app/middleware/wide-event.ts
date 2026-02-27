@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from "hono";
-import { WideEvent } from "../logger.ts";
+import { WideEvent } from "../../logger.ts";
 
 declare module "hono" {
   interface ContextVariableMap {
